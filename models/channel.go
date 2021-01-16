@@ -4,8 +4,8 @@ package models
 // a to do list belongs to a single channel
 
 type Channel struct {
-	Id      int `json:"id"`
-	SlackId int `json:"slackId"`
+	Id      int    `json:"id"`
+	SlackId string `json:"slackId"`
 }
 
 type ChannelService interface {
