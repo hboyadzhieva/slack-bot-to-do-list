@@ -9,5 +9,5 @@ type Channel struct {
 }
 
 type ChannelService interface {
-	Channel(id int) (*Channel, error)
+	FindById(id int) (*Channel, error)
 }
