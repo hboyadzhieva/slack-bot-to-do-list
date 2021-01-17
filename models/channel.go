@@ -7,7 +7,3 @@ type Channel struct {
 	Id      int    `json:"id"`
 	SlackId string `json:"slackId"`
 }
-
-type ChannelService interface {
-	FindById(id int) (*Channel, error)
-}

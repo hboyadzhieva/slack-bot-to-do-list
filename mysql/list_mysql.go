@@ -104,9 +104,3 @@ func (ls *ListService) CreateList(l *models.List) error {
 	_, err = stmt.ExecContext(ctx, l.Title, l.ChannelId)
 	return err
 }
-func (ls *ListService) DeleteList(id int) error {
-	return nil
-}
-func (ls *ListService) AddTask(t *models.Task) error {
-	return nil
-}
