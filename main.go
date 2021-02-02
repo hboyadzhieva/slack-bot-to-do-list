@@ -21,7 +21,6 @@ func main() {
 }
 
 func slashCommandHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("I heard ya")
 	s, err := slack.SlashCommandParse(r)
 	fmt.Printf("%+v\n", s)
 	if err != nil {
@@ -30,16 +29,20 @@ func slashCommandHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !s.ValidateToken(os.Getenv("SLACK_VERIFICATION_TOKEN")) {
-		fmt.Println("Slack couldnt ValidateToken")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
 	switch s.Command {
 	case "/tdcreatelist":
-		fmt.Println("Recognized your command")
-		params := &slack.Msg{Text: s.Text}
-		response := fmt.Sprintf("You want to create a list %v", params.Text)
+		params := &slack.Msg{Text: s.Text, Channel: s.ChannelID}
+		response, err := handleCreateList(params)
+		if err != nil {
+			fmt.Println(response, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(response))
 	default:
 		w.WriteHeader(http.StatusInternalServerError)

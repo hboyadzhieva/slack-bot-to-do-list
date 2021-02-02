@@ -101,6 +101,14 @@ func (ls *ListService) CreateList(l *models.List) error {
 		return err
 	}
 	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, l.Title, l.ChannelId)
+	result, err := stmt.ExecContext(ctx, l.Title, l.ChannelId)
+	if err != nil {
+		return err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+	l.Id = int(id)
 	return err
 }
