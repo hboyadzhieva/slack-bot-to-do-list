@@ -3,20 +3,38 @@ package mysql
 // refer to https://medium.com/easyread/unit-test-sql-in-golang-5af19075e68e blog
 import (
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/hboyadzhieva/slack-bot-to-do-list/models"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-var task = &models.Task{
+var task = Task{
 	Id:          1,
 	Status:      "Open",
 	Title:       "Manual test of ui",
 	Description: "Test manually home and about page",
-	ListId:      4,
-	AsigneeId:   3,
+	AsigneeId:   "U123",
+	ChannelId:   "C123",
 }
 
+func TestPersistTask(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("Failed to open sqlmock database: Error %s", err)
+	}
+	defer db.Close()
+	mock.MatchExpectationsInOrder(true)
+	mock.ExpectBegin()
+	mock.ExpectPrepare("INSERT INTO TASK \\(STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID\\) VALUES \\(\\?,\\?,\\?,\\?,\\?\\)").ExpectExec().WithArgs(task.Status, task.Title, task.Description, task.AsigneeId, task.ChannelId).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+	mockService := &TaskRepository{db}
+	err = mockService.PersistTask(&task)
+	assert.NoError(t, err)
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
+}
+
+/*
 func TestFindTaskById(t *testing.T) {
 	db, mock := NewMock()
 	mockService := &TaskService{db}
@@ -121,3 +139,4 @@ func TestAddTaskToList(t *testing.T) {
 	err := mockService.AddTaskToList(task, l)
 	assert.NoError(t, err)
 }
+*/

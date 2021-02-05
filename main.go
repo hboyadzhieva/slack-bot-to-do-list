@@ -1,7 +1,11 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/hboyadzhieva/slack-bot-to-do-list/mysql"
+	"github.com/hboyadzhieva/slack-bot-to-do-list/tododo"
 	"github.com/joho/godotenv"
 	"github.com/nlopes/slack"
 	"log"
@@ -9,20 +13,44 @@ import (
 	"os"
 )
 
+const (
+	port     = ":80"
+	dialect  = "mysql"
+	dsn      = "root:pass@tcp(127.0.0.1:3306)/slack"
+	idleConn = 10
+	maxConn  = 10
+)
+
+var db *sql.DB
+
 func main() {
-	err := godotenv.Load("keys.env")
+	err := godotenv.Load(os.Getenv("GOPATH") + string(os.PathSeparator) + "keys.env")
 	if err != nil {
-		log.Fatal("Error loading environment")
+		log.Fatal("Error loading environment", err)
 	}
 
-	http.HandleFunc("/", slashCommandHandler)
+	db, err = sql.Open(dialect, dsn)
+	if err != nil {
+		log.Fatalf("Can't open DB: %s", err)
+	}
+
+	err = db.Ping()
+	if err != nil {
+		log.Fatalf("Ping DB error: %s", err)
+	}
+
+	db.SetMaxIdleConns(idleConn)
+	db.SetMaxOpenConns(maxConn)
+
+	defer db.Close()
+
+	http.HandleFunc("/tododo", requestHandler)
 	fmt.Println("[INFO] Server listening")
-	log.Fatal(http.ListenAndServe(":80", nil))
+	log.Fatal(http.ListenAndServe(port, nil))
 }
 
-func slashCommandHandler(w http.ResponseWriter, r *http.Request) {
+func requestHandler(w http.ResponseWriter, r *http.Request) {
 	s, err := slack.SlashCommandParse(r)
-	fmt.Printf("%+v\n", s)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -33,19 +61,15 @@ func slashCommandHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch s.Command {
-	case "/tdcreatelist":
-		params := &slack.Msg{Text: s.Text, Channel: s.ChannelID}
-		response, err := handleCreateList(params)
-		if err != nil {
-			fmt.Println(response, err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(response))
-	default:
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	commandHandler := &tododo.CommandHandler{
+		Repository: &mysql.TaskRepository{DB: db},
 	}
+
+	response, err := commandHandler.HandleCommand(&s)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(response))
+
 }

@@ -1,37 +1,73 @@
+// Package mysql provides interaction with database tables for slack-bot tasks
 package mysql
 
 import (
-	"context"
+	//"context"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/hboyadzhieva/slack-bot-to-do-list/models"
-	"time"
+	//"time"
 )
 
-type TaskService struct {
+const (
+	statusOpen       = "Open"
+	statusInProgress = "In Progress"
+	statusDone       = "Done"
+)
+
+type Task struct {
+	Id          int    `json:"id"`
+	Status      string `json:"status"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	AsigneeId   string `json:"asignee"`
+	ChannelId   string `json:"channel"`
+}
+
+func NewTask(title string, channelId string) *Task {
+	task := Task{}
+	task.Status = statusOpen
+	task.Title = title
+	task.Description = ""
+	task.AsigneeId = ""
+	task.ChannelId = channelId
+	return &task
+}
+
+type TaskRepositoryInterface interface {
+	PersistTask(t *Task) error
+	GetTaskById(id int) (*Task, error)
+	GetAllInChannel(channelId string) ([]*Task, error)
+	GetAllInChannelWithStatus(channelId string, status ...string)
+	GetAllInChannelAssignedTo(channelId string, assigneeId string)
+	AssignTaskTo(taskId int, assigneeId string)
+	SetStatus(taskId int, status string)
+}
+
+type TaskRepository struct {
 	DB *sql.DB
 }
 
-func NewTaskService(dialect, dsn string, idleConn, maxConn int) (*ListService, error) {
-	// dialect - "mysql", "dsn" "user:password@/dbname", idle max 10
-	db, err := sql.Open(dialect, dsn)
+func (repo *TaskRepository) PersistTask(t *Task) error {
+	query := "INSERT INTO TASK (STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID) VALUES (?,?,?,?,?)"
+
+	txn, err := repo.DB.Begin()
 	if err != nil {
-		return nil, err
+		txn.Rollback()
+		return err
 	}
-
-	err = db.Ping()
+	stmt, err := repo.DB.Prepare(query)
 	if err != nil {
-		return nil, err
+		return err
 	}
+	defer stmt.Close()
+	defer txn.Commit()
 
-	db.SetMaxIdleConns(idleConn)
-	db.SetMaxOpenConns(maxConn)
-
-	return &ListService{db}, nil
+	_, err = txn.Exec(query, t.Status, t.Title, t.Description, t.AsigneeId, t.ChannelId)
+	return err
 }
 
-func (ts *TaskService) FindTaskById(id int) (*models.Task, error) {
-	var task models.Task
+/*func (ts *TaskRepository) GetTaskById(id int) (*Task, error) {
+	var task Task
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -42,31 +78,8 @@ func (ts *TaskService) FindTaskById(id int) (*models.Task, error) {
 		return nil, err
 	}
 	return &task, nil
-}
-
-func (ts *TaskService) AllTasksInList(list *models.List) ([]*models.Task, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	rows, err := ts.DB.QueryContext(ctx, "SELECT ID, STATUS, TITLE, DESCRIPTION, LIST, ASIGNEE FROM list WHERE LIST=?", list.Id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	allTasks := make([]*models.Task, 0)
-
-	for rows.Next() {
-		var task models.Task
-		err := rows.Scan(&task.Id, &task.Status, &task.Title, &task.Description, &task.ListId, &task.AsigneeId)
-		if err != nil {
-			return nil, err
-		}
-		allTasks = append(allTasks, &task)
-	}
-
-	return allTasks, nil
-}
-
+}*/
+/*
 func (ts *TaskService) CreateTask(t *models.Task) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -79,42 +92,4 @@ func (ts *TaskService) CreateTask(t *models.Task) error {
 	_, err = stmt.ExecContext(ctx, t.Status, t.Title, t.Description, t.ListId, t.AsigneeId)
 	return err
 }
-
-func (ts *TaskService) AssignTask(t *models.Task, p *models.Person) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	query := "UPDATE list SET ASIGNEE = ? WHERE ID = ?"
-	stmt, err := ts.DB.PrepareContext(ctx, query)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, p.Id, t.Id)
-	return err
-}
-
-func (ts *TaskService) SetStatus(t *models.Task, status string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	query := "UPDATE list SET STATUS = ? WHERE ID = ?"
-	stmt, err := ts.DB.PrepareContext(ctx, query)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, status, t.Id)
-	return err
-}
-
-func (ts *TaskService) AddTaskToList(t *models.Task, l *models.List) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	query := "UPDATE list SET LIST = ? WHERE ID = ?"
-	stmt, err := ts.DB.PrepareContext(ctx, query)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, l.Id, t.Id)
-	return err
-}
+*/
