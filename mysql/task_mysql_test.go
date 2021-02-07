@@ -2,14 +2,15 @@ package mysql
 
 // refer to https://medium.com/easyread/unit-test-sql-in-golang-5af19075e68e blog
 import (
+	"database/sql"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-var task = Task{
+var task = &Task{
 	Id:          1,
-	Status:      "Open",
+	Status:      StatusOpen,
 	Title:       "Manual test of ui",
 	Description: "Test manually home and about page",
 	AsigneeId:   "U123",
@@ -27,116 +28,184 @@ func TestPersistTask(t *testing.T) {
 	mock.ExpectPrepare("INSERT INTO TASK \\(STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID\\) VALUES \\(\\?,\\?,\\?,\\?,\\?\\)").ExpectExec().WithArgs(task.Status, task.Title, task.Description, task.AsigneeId, task.ChannelId).WillReturnResult(sqlmock.NewResult(1, 1))
 	mock.ExpectCommit()
 	mockService := &TaskRepository{db}
-	err = mockService.PersistTask(&task)
+	err = mockService.PersistTask(task)
 	assert.NoError(t, err)
 	if err = mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("Expectations were not met: %s", err)
 	}
 }
 
-/*
-func TestFindTaskById(t *testing.T) {
-	db, mock := NewMock()
-	mockService := &TaskService{db}
-	defer func() {
-		mockService.DB.Close()
-	}()
-
-	query := "SELECT ID, STATUS, TITLE, DESCRIPTION, LIST, ASIGNEE FROM list WHERE ID=\\?"
-	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "DESCRIPTION", "LIST", "ASIGNEE"}).
-		AddRow(task.Id, task.Status, task.Title, task.Description, task.ListId, task.AsigneeId)
-	mock.ExpectQuery(query).WithArgs(task.Id).WillReturnRows(rows)
-	ta, err := mockService.FindTaskById(task.Id)
-	assert.NotNil(t, ta)
-	assert.NoError(t, err)
+func TestGetTaskById(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("Failed to open sqlmock database: Error %s", err)
+	}
+	defer db.Close()
+	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "DESCRIPTION", "ASIGNEE_ID", "CHANNEL_ID"}).
+		AddRow(task.Id, task.Status, task.Title, task.Description, task.AsigneeId, task.ChannelId)
+	mock.MatchExpectationsInOrder(true)
+	mock.ExpectBegin()
+	mock.ExpectPrepare("SELECT ID, STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE ID = \\?").ExpectQuery().WithArgs(task.Id).WillReturnRows(rows)
+	mock.ExpectCommit()
+	mockService := &TaskRepository{db}
+	res, err := mockService.GetTaskById(task.Id)
+	if assert.NoError(t, err) {
+		assert.NotNil(t, res)
+		assert.EqualValues(t, res, task)
+	}
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
 }
 
-func TestFindTaskByIdError(t *testing.T) {
-	db, mock := NewMock()
-	mockService := &TaskService{db}
-	defer func() {
-		mockService.DB.Close()
-	}()
-
-	query := "SELECT ID, STATUS, TITLE, DESCRIPTION, LIST, ASIGNEE FROM list WHERE ID=\\?"
-	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "DESCRIPTION", "LIST", "ASIGNEE"})
-	mock.ExpectQuery(query).WithArgs(task.Id).WillReturnRows(rows)
-	ta, err := mockService.FindTaskById(task.Id)
-	assert.Empty(t, ta)
-	assert.Error(t, err)
+func TestGetTaskByIdError(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("Failed to open sqlmock database: Error %s", err)
+	}
+	defer db.Close()
+	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "DESCRIPTION", "ASIGNEE_ID", "CHANNEL_ID"})
+	mock.MatchExpectationsInOrder(true)
+	mock.ExpectBegin()
+	mock.ExpectPrepare("SELECT ID, STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE ID = \\?").ExpectQuery().WithArgs(task.Id).WillReturnRows(rows)
+	mock.ExpectCommit()
+	mockService := &TaskRepository{db}
+	res, err := mockService.GetTaskById(task.Id)
+	expectedError := sql.ErrNoRows
+	if assert.Error(t, err) {
+		assert.Nil(t, res)
+		assert.Equal(t, expectedError, err)
+	}
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
 }
 
-func TestAllTasksInList(t *testing.T) {
-	db, mock := NewMock()
-	mockService := &TaskService{db}
-	defer func() {
-		mockService.DB.Close()
-	}()
-
-	query := "SELECT ID, STATUS, TITLE, DESCRIPTION, LIST, ASIGNEE FROM list WHERE LIST=\\?"
-	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "DESCRIPTION", "LIST", "ASIGNEE"}).
-		AddRow(task.Id, task.Status, task.Title, task.Description, task.ListId, task.AsigneeId)
-	mock.ExpectQuery(query).WithArgs(task.ListId).WillReturnRows(rows)
-	tasks, err := mockService.AllTasksInList(&models.List{Id: task.ListId})
-	assert.NotEmpty(t, tasks)
-	assert.NoError(t, err)
-	assert.Len(t, tasks, 1)
+func TestGetAllInChannel(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("Failed to open sqlmock database: Error %s", err)
+	}
+	defer db.Close()
+	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "DESCRIPTION", "ASIGNEE_ID", "CHANNEL_ID"}).
+		AddRow(task.Id, task.Status, task.Title, task.Description, task.AsigneeId, task.ChannelId).
+		AddRow(2, task.Status, task.Title, task.Description, task.AsigneeId, task.ChannelId)
+	mock.MatchExpectationsInOrder(true)
+	mock.ExpectBegin()
+	mock.ExpectPrepare("SELECT ID, STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = \\?").ExpectQuery().WithArgs(task.ChannelId).WillReturnRows(rows)
+	mock.ExpectCommit()
+	mockService := &TaskRepository{db}
+	res, err := mockService.GetAllInChannel(task.ChannelId)
+	if assert.NoError(t, err) {
+		assert.NotNil(t, res)
+		assert.Equal(t, 2, len(res))
+	}
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
 }
 
-func TestCreateTask(t *testing.T) {
-	db, mock := NewMock()
-	mockService := &TaskService{db}
-	defer func() {
-		mockService.DB.Close()
-	}()
-
-	query := "INSERT INTO list \\(STATUS, TITLE, DESCRIPTION, LIST, ASIGNEE\\) VALUES\\(\\?, \\?, \\?, \\?, \\?\\)"
-	prep := mock.ExpectPrepare(query)
-	prep.ExpectExec().WithArgs(task.Status, task.Title, task.Description, task.ListId, task.AsigneeId).WillReturnResult(sqlmock.NewResult(0, 1))
-	err := mockService.CreateTask(task)
-	assert.NoError(t, err)
+func TestGetAllInChannelWithStatus1Argument(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("Failed to open sqlmock database: Error %s", err)
+	}
+	defer db.Close()
+	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "DESCRIPTION", "ASIGNEE_ID", "CHANNEL_ID"}).
+		AddRow(task.Id, task.Status, task.Title, task.Description, task.AsigneeId, task.ChannelId)
+	mock.MatchExpectationsInOrder(true)
+	mock.ExpectBegin()
+	mock.ExpectPrepare("SELECT ID, STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = \\? AND STATUS = \\?").ExpectQuery().WithArgs(task.ChannelId, StatusOpen).WillReturnRows(rows)
+	mock.ExpectCommit()
+	mockService := &TaskRepository{db}
+	res, err := mockService.GetAllInChannelWithStatus(task.ChannelId, StatusOpen)
+	if assert.NoError(t, err) {
+		assert.NotNil(t, res)
+		assert.Equal(t, 1, len(res))
+	}
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
 }
 
-func TestAssignTask(t *testing.T) {
-	db, mock := NewMock()
-	mockService := &TaskService{db}
-	defer func() {
-		mockService.DB.Close()
-	}()
-	p := &models.Person{Id: 1, SlackId: "a1"}
-	query := "UPDATE list SET ASIGNEE = \\? WHERE ID = \\?"
-	prep := mock.ExpectPrepare(query)
-	prep.ExpectExec().WithArgs(task.Id, p.Id).WillReturnResult(sqlmock.NewResult(0, 1))
-	err := mockService.AssignTask(task, p)
+func TestGetAllInChannelWithStatus2Arguments(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("Failed to open sqlmock database: Error %s", err)
+	}
+	defer db.Close()
+	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "DESCRIPTION", "ASIGNEE_ID", "CHANNEL_ID"}).
+		AddRow(task.Id, task.Status, task.Title, task.Description, task.AsigneeId, task.ChannelId)
+	mock.MatchExpectationsInOrder(true)
+	mock.ExpectBegin()
+	mock.ExpectPrepare("SELECT ID, STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = \\? AND \\( STATUS = \\? OR STATUS = \\? \\)").ExpectQuery().WithArgs(task.ChannelId, StatusOpen, StatusInProgress).WillReturnRows(rows)
+	mock.ExpectCommit()
+	mockService := &TaskRepository{db}
+	res, err := mockService.GetAllInChannelWithStatus(task.ChannelId, StatusOpen, StatusInProgress)
+	if assert.NoError(t, err) {
+		assert.NotNil(t, res)
+		assert.Equal(t, 1, len(res))
+	}
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
+}
+
+func TestGetAllInChannelAssignedTo(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("Failed to open sqlmock database: Error %s", err)
+	}
+	defer db.Close()
+	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "DESCRIPTION", "ASIGNEE_ID", "CHANNEL_ID"}).
+		AddRow(task.Id, task.Status, task.Title, task.Description, task.AsigneeId, task.ChannelId)
+	mock.MatchExpectationsInOrder(true)
+	mock.ExpectBegin()
+	mock.ExpectPrepare("SELECT ID, STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = \\? AND ASIGNEE_ID = \\?").ExpectQuery().WithArgs(task.ChannelId, task.AsigneeId).WillReturnRows(rows)
+	mock.ExpectCommit()
+	mockService := &TaskRepository{db}
+	res, err := mockService.GetAllInChannelAssignedTo(task.ChannelId, task.AsigneeId)
+	if assert.NoError(t, err) {
+		assert.NotNil(t, res)
+		assert.Equal(t, 1, len(res))
+	}
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
+}
+
+func TestAssignTaskTo(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("Failed to open sqlmock database: Error %s", err)
+	}
+	defer db.Close()
+	mock.MatchExpectationsInOrder(true)
+	mock.ExpectBegin()
+	mock.ExpectPrepare("UPDATE TASK SET ASIGNEE_ID = \\? WHERE ID = \\?").ExpectExec().WithArgs(task.AsigneeId, task.Id).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+	mockService := &TaskRepository{db}
+	err = mockService.AssignTaskTo(task.Id, task.AsigneeId)
 	assert.NoError(t, err)
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
 }
 
 func TestSetStatus(t *testing.T) {
-	db, mock := NewMock()
-	mockService := &TaskService{db}
-	defer func() {
-		mockService.DB.Close()
-	}()
-
-	status := "Done"
-	query := "UPDATE list SET STATUS = \\? WHERE ID = \\?"
-	prep := mock.ExpectPrepare(query)
-	prep.ExpectExec().WithArgs(status, task.Id).WillReturnResult(sqlmock.NewResult(0, 1))
-	err := mockService.SetStatus(task, status)
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Errorf("Failed to open sqlmock database: Error %s", err)
+	}
+	defer db.Close()
+	mock.MatchExpectationsInOrder(true)
+	mock.ExpectBegin()
+	mock.ExpectPrepare("UPDATE TASK SET STATUS = \\? WHERE ID = \\?").ExpectExec().WithArgs(StatusInProgress, task.Id).WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectCommit()
+	mockService := &TaskRepository{db}
+	err = mockService.SetStatus(task.Id, StatusInProgress)
 	assert.NoError(t, err)
+	if err = mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("Expectations were not met: %s", err)
+	}
 }
-
-func TestAddTaskToList(t *testing.T) {
-	db, mock := NewMock()
-	mockService := &TaskService{db}
-	defer func() {
-		mockService.DB.Close()
-	}()
-	l := &models.List{Id: 1}
-	query := "UPDATE list SET LIST = \\? WHERE ID = \\?"
-	prep := mock.ExpectPrepare(query)
-	prep.ExpectExec().WithArgs(task.Id, l.Id).WillReturnResult(sqlmock.NewResult(0, 1))
-	err := mockService.AddTaskToList(task, l)
-	assert.NoError(t, err)
-}
-*/
