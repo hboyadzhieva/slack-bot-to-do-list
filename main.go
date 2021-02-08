@@ -69,7 +69,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(response))
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Write(response)
 
 }

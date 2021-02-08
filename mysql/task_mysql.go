@@ -13,12 +13,12 @@ const (
 )
 
 type Task struct {
-	Id          int    `json:"id"`
-	Status      string `json:"status"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	AsigneeId   string `json:"asignee"`
-	ChannelId   string `json:"channel"`
+	Id          int
+	Status      string
+	Title       string
+	Description string
+	AsigneeId   string
+	ChannelId   string
 }
 
 func NewTask(title string, channelId string) *Task {
