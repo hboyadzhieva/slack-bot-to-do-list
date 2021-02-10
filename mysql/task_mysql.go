@@ -13,20 +13,18 @@ const (
 )
 
 type Task struct {
-	Id          int
-	Status      string
-	Title       string
-	Description string
-	AsigneeId   string
-	ChannelId   string
+	Id        int
+	Status    string
+	Title     string
+	AsigneeId string
+	ChannelId string
 }
 
 func NewTask(title string, channelId string) *Task {
 	task := Task{}
 	task.Status = StatusOpen
 	task.Title = title
-	task.Description = ""
-	task.AsigneeId = ""
+	task.AsigneeId = "Not assigned"
 	task.ChannelId = channelId
 	return &task
 }
@@ -46,7 +44,7 @@ type TaskRepository struct {
 }
 
 func (repo *TaskRepository) PersistTask(t *Task) error {
-	query := "INSERT INTO TASK (STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID) VALUES (?,?,?,?,?)"
+	query := "INSERT INTO TASK (STATUS, TITLE, ASIGNEE_ID, CHANNEL_ID) VALUES (?,?,?,?)"
 
 	txn, err := repo.DB.Begin()
 	if err != nil {
@@ -60,12 +58,12 @@ func (repo *TaskRepository) PersistTask(t *Task) error {
 	defer stmt.Close()
 	defer txn.Commit()
 
-	_, err = stmt.Exec(t.Status, t.Title, t.Description, t.AsigneeId, t.ChannelId)
+	_, err = stmt.Exec(t.Status, t.Title, t.AsigneeId, t.ChannelId)
 	return err
 }
 
 func (repo *TaskRepository) GetTaskById(id int) (*Task, error) {
-	query := "SELECT ID, STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE ID = ?"
+	query := "SELECT ID, STATUS, TITLE, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE ID = ?"
 	txn, err := repo.DB.Begin()
 	if err != nil {
 		txn.Rollback()
@@ -77,7 +75,7 @@ func (repo *TaskRepository) GetTaskById(id int) (*Task, error) {
 		return nil, err
 	}
 	var task Task
-	err = stmt.QueryRow(id).Scan(&task.Id, &task.Status, &task.Title, &task.Description, &task.AsigneeId, &task.ChannelId)
+	err = stmt.QueryRow(id).Scan(&task.Id, &task.Status, &task.Title, &task.AsigneeId, &task.ChannelId)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +83,7 @@ func (repo *TaskRepository) GetTaskById(id int) (*Task, error) {
 }
 
 func (repo *TaskRepository) GetAllInChannel(channelId string) ([]*Task, error) {
-	query := "SELECT ID, STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = ?"
+	query := "SELECT ID, STATUS, TITLE, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = ?"
 	txn, err := repo.DB.Begin()
 	if err != nil {
 		txn.Rollback()
@@ -103,7 +101,7 @@ func (repo *TaskRepository) GetAllInChannel(channelId string) ([]*Task, error) {
 	tasks := make([]*Task, 0)
 	for rows.Next() {
 		var task Task
-		err = rows.Scan(&task.Id, &task.Status, &task.Title, &task.Description, &task.AsigneeId, &task.ChannelId)
+		err = rows.Scan(&task.Id, &task.Status, &task.Title, &task.AsigneeId, &task.ChannelId)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +112,7 @@ func (repo *TaskRepository) GetAllInChannel(channelId string) ([]*Task, error) {
 
 func (repo *TaskRepository) GetAllInChannelWithStatus(channelId string, status ...string) ([]*Task, error) {
 	statusCount := len(status)
-	query := "SELECT ID, STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = ?"
+	query := "SELECT ID, STATUS, TITLE, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = ?"
 	if statusCount == 1 {
 		query = query + " AND STATUS = ?"
 	} else if statusCount > 1 {
@@ -146,7 +144,7 @@ func (repo *TaskRepository) GetAllInChannelWithStatus(channelId string, status .
 	tasks := make([]*Task, 0)
 	for rows.Next() {
 		var task Task
-		err = rows.Scan(&task.Id, &task.Status, &task.Title, &task.Description, &task.AsigneeId, &task.ChannelId)
+		err = rows.Scan(&task.Id, &task.Status, &task.Title, &task.AsigneeId, &task.ChannelId)
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +154,7 @@ func (repo *TaskRepository) GetAllInChannelWithStatus(channelId string, status .
 }
 
 func (repo *TaskRepository) GetAllInChannelAssignedTo(channelId string, assigneeId string) ([]*Task, error) {
-	query := "SELECT ID, STATUS, TITLE, DESCRIPTION, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = ? AND ASIGNEE_ID = ?"
+	query := "SELECT ID, STATUS, TITLE, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = ? AND ASIGNEE_ID = ?"
 	txn, err := repo.DB.Begin()
 	if err != nil {
 		txn.Rollback()
@@ -174,7 +172,7 @@ func (repo *TaskRepository) GetAllInChannelAssignedTo(channelId string, assignee
 	tasks := make([]*Task, 0)
 	for rows.Next() {
 		var task Task
-		err = rows.Scan(&task.Id, &task.Status, &task.Title, &task.Description, &task.AsigneeId, &task.ChannelId)
+		err = rows.Scan(&task.Id, &task.Status, &task.Title, &task.AsigneeId, &task.ChannelId)
 		if err != nil {
 			return nil, err
 		}

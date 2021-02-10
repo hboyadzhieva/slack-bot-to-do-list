@@ -22,6 +22,8 @@ type CommandHandlerInterface interface {
 	HandleAddCommand(c *slack.SlashCommand) ([]byte, error)
 	HandleShowCommand(c *slack.SlashCommand) ([]byte, error)
 	HandleAssignCommand(c *slack.SlashCommand) ([]byte, error)
+	HandleProgressCommand(c *slack.SlashCommand) ([]byte, error)
+	HandleDoneCommand(c *slack.SlashCommand) ([]byte, error)
 }
 
 type CommandHandler struct {
@@ -39,6 +41,10 @@ func (handler *CommandHandler) HandleCommand(c *slack.SlashCommand) ([]byte, err
 		return handler.HandleShowCommand(c)
 	case "/tododo-assign":
 		return handler.HandleAssignCommand(c)
+	case "/tododo-start":
+		return handler.HandleProgressCommand(c)
+	case "/tododo-done":
+		return handler.HandleDoneCommand(c)
 	default:
 		return []byte("No such command"), fmt.Errorf("No such command %s", c.Command)
 	}
@@ -68,7 +74,15 @@ func (handler *CommandHandler) HandleAddCommand(c *slack.SlashCommand) ([]byte, 
 	if err != nil {
 		return []byte(""), err
 	}
-	return []byte("ToDo: Added task " + task.Title), nil
+	header := NewHeaderBlock("ToDo new task:")
+	div := NewDividerBlock()
+	block1 := NewSectionTextBlock("mrkdwn", "*Task added*: "+task.Title)
+	resp := NewResponse(header, div, block1)
+	byt, err := json.Marshal(resp)
+	if err != nil {
+		return nil, err
+	}
+	return byt, nil
 }
 
 func (handler *CommandHandler) HandleShowCommand(c *slack.SlashCommand) ([]byte, error) {
@@ -116,7 +130,75 @@ func (handler *CommandHandler) HandleAssignCommand(c *slack.SlashCommand) ([]byt
 	if err != nil {
 		return []byte(""), err
 	}
-	return []byte("Task assigned."), nil
+	task, err := handler.Repository.GetTaskById(id)
+	if err != nil {
+		return nil, err
+	}
+	header := NewHeaderBlock("ToDo task update:")
+	div := NewDividerBlock()
+	block1 := NewSectionTextBlock("mrkdwn", "Asigned: "+task.Title+" - "+task.AsigneeId)
+	resp := NewResponse(header, div, block1)
+	byt, err := json.Marshal(resp)
+	if err != nil {
+		return nil, err
+	}
+	return byt, nil
+}
+
+func (handler *CommandHandler) HandleProgressCommand(c *slack.SlashCommand) ([]byte, error) {
+	args := strings.Split(c.Text, " ")
+	if len(args) != 1 {
+		return []byte(badArgsAssignMessage), nil
+	}
+	id, err := strconv.Atoi(args[0])
+	if err != nil {
+		return []byte(badArgsAssignMessage), nil
+	}
+	err = handler.Repository.SetStatus(id, mysql.StatusInProgress)
+	if err != nil {
+		return nil, err
+	}
+	task, err := handler.Repository.GetTaskById(id)
+	if err != nil {
+		return nil, err
+	}
+	header := NewHeaderBlock("ToDo task update:")
+	div := NewDividerBlock()
+	block1 := NewSectionTextBlock("mrkdwn", "Status: "+task.Title+" - "+task.Status)
+	resp := NewResponse(header, div, block1)
+	byt, err := json.Marshal(resp)
+	if err != nil {
+		return nil, err
+	}
+	return byt, nil
+}
+
+func (handler *CommandHandler) HandleDoneCommand(c *slack.SlashCommand) ([]byte, error) {
+	args := strings.Split(c.Text, " ")
+	if len(args) != 1 {
+		return []byte(badArgsAssignMessage), nil
+	}
+	id, err := strconv.Atoi(args[0])
+	if err != nil {
+		return []byte(badArgsAssignMessage), nil
+	}
+	err = handler.Repository.SetStatus(id, mysql.StatusDone)
+	if err != nil {
+		return nil, err
+	}
+	task, err := handler.Repository.GetTaskById(id)
+	if err != nil {
+		return nil, err
+	}
+	header := NewHeaderBlock("ToDo task update:")
+	div := NewDividerBlock()
+	block1 := NewSectionTextBlock("mrkdwn", "Status: "+task.Title+" - "+task.Status)
+	resp := NewResponse(header, div, block1)
+	byt, err := json.Marshal(resp)
+	if err != nil {
+		return nil, err
+	}
+	return byt, nil
 }
 
 func getStatusEmoji(status string) string {
