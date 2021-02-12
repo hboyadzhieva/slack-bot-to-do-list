@@ -22,6 +22,7 @@ const (
 )
 
 var db *sql.DB
+var commandHandler tododo.CommandHandlerInterface
 
 func main() {
 	err := godotenv.Load(os.Getenv("GOPATH") + string(os.PathSeparator) + "keys.env")
@@ -44,7 +45,11 @@ func main() {
 
 	defer db.Close()
 
-	http.HandleFunc("/tododo", requestHandler)
+	commandHandler = &tododo.CommandHandler{
+		Repository: &mysql.TaskRepository{DB: db},
+	}
+
+	go http.HandleFunc("/tododo", requestHandler)
 	fmt.Println("[INFO] Server listening")
 	log.Fatal(http.ListenAndServe(port, nil))
 }
@@ -59,10 +64,6 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 	if !s.ValidateToken(os.Getenv("SLACK_VERIFICATION_TOKEN")) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
-	}
-
-	commandHandler := &tododo.CommandHandler{
-		Repository: &mysql.TaskRepository{DB: db},
 	}
 
 	response, err := commandHandler.HandleCommand(&s)

@@ -69,7 +69,6 @@ func (handler *CommandHandler) HandleHelpCommand(c *slack.SlashCommand) ([]byte,
 
 func (handler *CommandHandler) HandleAddCommand(c *slack.SlashCommand) ([]byte, error) {
 	task := mysql.NewTask(c.Text, c.ChannelID)
-	// TO DO error checking
 	err := handler.Repository.PersistTask(task)
 	if err != nil {
 		return []byte(""), err
