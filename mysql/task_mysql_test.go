@@ -104,52 +104,6 @@ func TestGetAllInChannel(t *testing.T) {
 	}
 }
 
-func TestGetAllInChannelWithStatus1Argument(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Errorf("Failed to open sqlmock database: Error %s", err)
-	}
-	defer db.Close()
-	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "ASIGNEE_ID", "CHANNEL_ID"}).
-		AddRow(task.Id, task.Status, task.Title, task.AsigneeId, task.ChannelId)
-	mock.MatchExpectationsInOrder(true)
-	mock.ExpectBegin()
-	mock.ExpectPrepare("SELECT ID, STATUS, TITLE, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = \\? AND STATUS = \\?").ExpectQuery().WithArgs(task.ChannelId, StatusOpen).WillReturnRows(rows)
-	mock.ExpectCommit()
-	mockService := &TaskRepository{db}
-	res, err := mockService.GetAllInChannelWithStatus(task.ChannelId, StatusOpen)
-	if assert.NoError(t, err) {
-		assert.NotNil(t, res)
-		assert.Equal(t, 1, len(res))
-	}
-	if err = mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("Expectations were not met: %s", err)
-	}
-}
-
-func TestGetAllInChannelWithStatus2Arguments(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Errorf("Failed to open sqlmock database: Error %s", err)
-	}
-	defer db.Close()
-	rows := sqlmock.NewRows([]string{"ID", "STATUS", "TITLE", "ASIGNEE_ID", "CHANNEL_ID"}).
-		AddRow(task.Id, task.Status, task.Title, task.AsigneeId, task.ChannelId)
-	mock.MatchExpectationsInOrder(true)
-	mock.ExpectBegin()
-	mock.ExpectPrepare("SELECT ID, STATUS, TITLE, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = \\? AND \\( STATUS = \\? OR STATUS = \\? \\)").ExpectQuery().WithArgs(task.ChannelId, StatusOpen, StatusInProgress).WillReturnRows(rows)
-	mock.ExpectCommit()
-	mockService := &TaskRepository{db}
-	res, err := mockService.GetAllInChannelWithStatus(task.ChannelId, StatusOpen, StatusInProgress)
-	if assert.NoError(t, err) {
-		assert.NotNil(t, res)
-		assert.Equal(t, 1, len(res))
-	}
-	if err = mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("Expectations were not met: %s", err)
-	}
-}
-
 func TestGetAllInChannelAssignedTo(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {

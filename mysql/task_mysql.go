@@ -33,7 +33,6 @@ type TaskRepositoryInterface interface {
 	PersistTask(t *Task) error
 	GetTaskById(id int) (*Task, error)
 	GetAllInChannel(channelId string) ([]*Task, error)
-	GetAllInChannelWithStatus(channelId string, status ...string) ([]*Task, error)
 	GetAllInChannelAssignedTo(channelId string, assigneeId string) ([]*Task, error)
 	AssignTaskTo(taskId int, assigneeId string) error
 	SetStatus(taskId int, status string) error
@@ -95,49 +94,6 @@ func (repo *TaskRepository) GetAllInChannel(channelId string) ([]*Task, error) {
 		return nil, err
 	}
 	rows, err := stmt.Query(channelId)
-	if err != nil {
-		return nil, err
-	}
-	tasks := make([]*Task, 0)
-	for rows.Next() {
-		var task Task
-		err = rows.Scan(&task.Id, &task.Status, &task.Title, &task.AsigneeId, &task.ChannelId)
-		if err != nil {
-			return nil, err
-		}
-		tasks = append(tasks, &task)
-	}
-	return tasks, nil
-}
-
-func (repo *TaskRepository) GetAllInChannelWithStatus(channelId string, status ...string) ([]*Task, error) {
-	statusCount := len(status)
-	query := "SELECT ID, STATUS, TITLE, ASIGNEE_ID, CHANNEL_ID FROM TASK WHERE CHANNEL_ID = ?"
-	if statusCount == 1 {
-		query = query + " AND STATUS = ?"
-	} else if statusCount > 1 {
-		query = query + " AND ( "
-		for i := 0; i < statusCount-1; i++ {
-			query = query + "STATUS = ? OR "
-		}
-		query = query + "STATUS = ? )"
-	}
-	txn, err := repo.DB.Begin()
-	if err != nil {
-		txn.Rollback()
-		return nil, err
-	}
-	defer txn.Commit()
-	stmt, err := repo.DB.Prepare(query)
-	if err != nil {
-		return nil, err
-	}
-	args := make([]interface{}, 0)
-	args = append(args, channelId)
-	for _, stat := range status {
-		args = append(args, stat)
-	}
-	rows, err := stmt.Query(args...)
 	if err != nil {
 		return nil, err
 	}

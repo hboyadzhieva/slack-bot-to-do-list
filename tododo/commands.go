@@ -10,41 +10,35 @@ import (
 	"strings"
 )
 
-const (
-	showMessage          = "ToDo"
-	addMessage           = "ToDo: Added task"
-	badArgsAssignMessage = "Bad arguments. Please enter /tododo-assign [taskId] [@user]"
-)
-
 type CommandHandlerInterface interface {
 	HandleCommand(c *slack.SlashCommand) ([]byte, error)
-	HandleHelpCommand(c *slack.SlashCommand) ([]byte, error)
-	HandleAddCommand(c *slack.SlashCommand) ([]byte, error)
-	HandleShowCommand(c *slack.SlashCommand) ([]byte, error)
-	HandleAssignCommand(c *slack.SlashCommand) ([]byte, error)
-	HandleProgressCommand(c *slack.SlashCommand) ([]byte, error)
-	HandleDoneCommand(c *slack.SlashCommand) ([]byte, error)
+	HandleHelpCommand() ([]byte, error)
+	HandleAddCommand(text string, channelId string) ([]byte, error)
+	HandleShowCommand(text string, channelId string) ([]byte, error)
+	HandleAssignCommand(text string) ([]byte, error)
+	HandleProgressCommand(text string) ([]byte, error)
+	HandleDoneCommand(text string) ([]byte, error)
 }
 
 type CommandHandler struct {
-	Repository *mysql.TaskRepository
+	Repository mysql.TaskRepositoryInterface
 }
 
 // Pass the command to the proper command handlers
 func (handler *CommandHandler) HandleCommand(c *slack.SlashCommand) ([]byte, error) {
 	switch c.Command {
 	case "/tododo-help":
-		return handler.HandleHelpCommand(c)
+		return handler.HandleHelpCommand()
 	case "/tododo-add":
-		return handler.HandleAddCommand(c)
+		return handler.HandleAddCommand(c.Text, c.ChannelID)
 	case "/tododo-show":
-		return handler.HandleShowCommand(c)
+		return handler.HandleShowCommand(c.Text, c.ChannelID)
 	case "/tododo-assign":
-		return handler.HandleAssignCommand(c)
+		return handler.HandleAssignCommand(c.Text)
 	case "/tododo-start":
-		return handler.HandleProgressCommand(c)
+		return handler.HandleProgressCommand(c.Text)
 	case "/tododo-done":
-		return handler.HandleDoneCommand(c)
+		return handler.HandleDoneCommand(c.Text)
 	default:
 		return []byte("No such command"), fmt.Errorf("No such command %s", c.Command)
 	}
@@ -52,30 +46,32 @@ func (handler *CommandHandler) HandleCommand(c *slack.SlashCommand) ([]byte, err
 	return []byte("Success"), nil
 }
 
-func (handler *CommandHandler) HandleHelpCommand(c *slack.SlashCommand) ([]byte, error) {
-	header := NewHeaderBlock("Welcome! ToDo do can:")
+func (handler *CommandHandler) HandleHelpCommand() ([]byte, error) {
+	header := NewHeaderBlock(HelpHeader)
 	div := NewDividerBlock()
-	block1 := NewSectionTextBlock("mrkdwn", "*/tododo add [task]*: add a task to your ToDo list")
-	block2 := NewSectionTextBlock("mrkdwn", "*/tododo show*: show the tasks in your ToDo list")
-	block3 := NewSectionTextBlock("mrkdwn", "*/tododo assign [taskId] [@user]*: assign a task to a user")
-	resp := NewResponse(header, div, block1, block2, block3)
+	block1 := NewSectionTextBlock(MarkdownType, HelpBlock1Text)
+	block2 := NewSectionTextBlock(MarkdownType, HelpBlock2Text)
+	block3 := NewSectionTextBlock(MarkdownType, HelpBlock3Text)
+	block4 := NewSectionTextBlock(MarkdownType, HelpBlock4Text)
+	block5 := NewSectionTextBlock(MarkdownType, HelpBlock5Text)
+	resp := NewResponse(header, div, block1, block2, block3, block4, block5)
 	byt, err := json.Marshal(resp)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(byt))
+	//fmt.Println(string(byt))
 	return byt, nil
 }
 
-func (handler *CommandHandler) HandleAddCommand(c *slack.SlashCommand) ([]byte, error) {
-	task := mysql.NewTask(c.Text, c.ChannelID)
+func (handler *CommandHandler) HandleAddCommand(text string, channelId string) ([]byte, error) {
+	task := mysql.NewTask(text, channelId)
 	err := handler.Repository.PersistTask(task)
 	if err != nil {
-		return []byte(""), err
+		return nil, err
 	}
-	header := NewHeaderBlock("ToDo new task:")
+	header := NewHeaderBlock(AddHeader)
 	div := NewDividerBlock()
-	block1 := NewSectionTextBlock("mrkdwn", "*Task added*: "+task.Title)
+	block1 := NewSectionTextBlock(MarkdownType, "*Task added*: "+task.Title)
 	resp := NewResponse(header, div, block1)
 	byt, err := json.Marshal(resp)
 	if err != nil {
@@ -84,20 +80,20 @@ func (handler *CommandHandler) HandleAddCommand(c *slack.SlashCommand) ([]byte, 
 	return byt, nil
 }
 
-func (handler *CommandHandler) HandleShowCommand(c *slack.SlashCommand) ([]byte, error) {
-	tasks, err := handler.Repository.GetAllInChannel(c.ChannelID)
+func (handler *CommandHandler) HandleShowCommand(text string, channelId string) ([]byte, error) {
+	tasks, err := handler.Repository.GetAllInChannel(channelId)
 	if err != nil {
 		return []byte(""), err
 	}
 	//TO DO error checking
-	header := NewHeaderBlock(showMessage)
+	header := NewHeaderBlock(ShowHeader)
 	div := NewDividerBlock()
 	blocks := make([]*Block, 0)
 	for _, t := range tasks {
-		idTitle := NewField("mrkdwn", "*"+strconv.Itoa(t.Id)+"*: "+t.Title)
-		emoji := NewField("mrkdwn", getStatusEmoji(t.Status))
-		assignee := NewField("mrkdwn", t.AsigneeId)
-		status := NewField("mrkdwn", getStatusName(t.Status))
+		idTitle := NewField(MarkdownType, "*"+strconv.Itoa(t.Id)+"*: "+t.Title)
+		emoji := NewField(MarkdownType, getStatusEmoji(t.Status))
+		assignee := NewField(MarkdownType, t.AsigneeId)
+		status := NewField(MarkdownType, getStatusName(t.Status))
 		block := NewSectionFieldsBlock(idTitle, emoji, assignee, status)
 		blocks = append(blocks, block)
 	}
@@ -112,18 +108,18 @@ func (handler *CommandHandler) HandleShowCommand(c *slack.SlashCommand) ([]byte,
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(string(byt))
+	//fmt.Println(string(byt))
 	return byt, nil
 }
 
-func (handler *CommandHandler) HandleAssignCommand(c *slack.SlashCommand) ([]byte, error) {
-	args := strings.Split(c.Text, " ")
+func (handler *CommandHandler) HandleAssignCommand(text string) ([]byte, error) {
+	args := strings.Split(text, " ")
 	if len(args) != 2 {
-		return []byte(badArgsAssignMessage), nil
+		return []byte(AssignBadArgsText), nil
 	}
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		return []byte(badArgsAssignMessage), nil
+		return []byte(AssignBadArgsText), nil
 	}
 	err = handler.Repository.AssignTaskTo(id, args[1])
 	if err != nil {
@@ -133,9 +129,9 @@ func (handler *CommandHandler) HandleAssignCommand(c *slack.SlashCommand) ([]byt
 	if err != nil {
 		return nil, err
 	}
-	header := NewHeaderBlock("ToDo task update:")
+	header := NewHeaderBlock(UpdateHeader)
 	div := NewDividerBlock()
-	block1 := NewSectionTextBlock("mrkdwn", "Asigned: "+task.Title+" - "+task.AsigneeId)
+	block1 := NewSectionTextBlock("mrkdwn", "Assigned: "+task.Title+" - "+task.AsigneeId)
 	resp := NewResponse(header, div, block1)
 	byt, err := json.Marshal(resp)
 	if err != nil {
@@ -144,14 +140,14 @@ func (handler *CommandHandler) HandleAssignCommand(c *slack.SlashCommand) ([]byt
 	return byt, nil
 }
 
-func (handler *CommandHandler) HandleProgressCommand(c *slack.SlashCommand) ([]byte, error) {
-	args := strings.Split(c.Text, " ")
+func (handler *CommandHandler) HandleProgressCommand(text string) ([]byte, error) {
+	args := strings.Split(text, " ")
 	if len(args) != 1 {
-		return []byte(badArgsAssignMessage), nil
+		return []byte(AssignBadArgsText), nil
 	}
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		return []byte(badArgsAssignMessage), nil
+		return []byte(AssignBadArgsText), nil
 	}
 	err = handler.Repository.SetStatus(id, mysql.StatusInProgress)
 	if err != nil {
@@ -161,9 +157,9 @@ func (handler *CommandHandler) HandleProgressCommand(c *slack.SlashCommand) ([]b
 	if err != nil {
 		return nil, err
 	}
-	header := NewHeaderBlock("ToDo task update:")
+	header := NewHeaderBlock(UpdateHeader)
 	div := NewDividerBlock()
-	block1 := NewSectionTextBlock("mrkdwn", "Status: "+task.Title+" - "+task.Status)
+	block1 := NewSectionTextBlock(MarkdownType, "Status: "+task.Title+" - "+task.Status)
 	resp := NewResponse(header, div, block1)
 	byt, err := json.Marshal(resp)
 	if err != nil {
@@ -172,14 +168,14 @@ func (handler *CommandHandler) HandleProgressCommand(c *slack.SlashCommand) ([]b
 	return byt, nil
 }
 
-func (handler *CommandHandler) HandleDoneCommand(c *slack.SlashCommand) ([]byte, error) {
-	args := strings.Split(c.Text, " ")
+func (handler *CommandHandler) HandleDoneCommand(text string) ([]byte, error) {
+	args := strings.Split(text, " ")
 	if len(args) != 1 {
-		return []byte(badArgsAssignMessage), nil
+		return []byte(AssignBadArgsText), nil
 	}
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
-		return []byte(badArgsAssignMessage), nil
+		return []byte(AssignBadArgsText), nil
 	}
 	err = handler.Repository.SetStatus(id, mysql.StatusDone)
 	if err != nil {
@@ -189,9 +185,9 @@ func (handler *CommandHandler) HandleDoneCommand(c *slack.SlashCommand) ([]byte,
 	if err != nil {
 		return nil, err
 	}
-	header := NewHeaderBlock("ToDo task update:")
+	header := NewHeaderBlock(UpdateHeader)
 	div := NewDividerBlock()
-	block1 := NewSectionTextBlock("mrkdwn", "Status: "+task.Title+" - "+task.Status)
+	block1 := NewSectionTextBlock(MarkdownType, "Status: "+task.Title+" - "+task.Status)
 	resp := NewResponse(header, div, block1)
 	byt, err := json.Marshal(resp)
 	if err != nil {
@@ -203,11 +199,11 @@ func (handler *CommandHandler) HandleDoneCommand(c *slack.SlashCommand) ([]byte,
 func getStatusEmoji(status string) string {
 	switch status {
 	case mysql.StatusOpen:
-		return ":question:"
+		return StatusOpenEmoji
 	case mysql.StatusInProgress:
-		return ":hourglass_flowing_sand:"
+		return StatusInProgressEmoji
 	case mysql.StatusDone:
-		return ":white_check_mark:"
+		return StatusDoneEmoji
 	default:
 		return ""
 	}
@@ -216,11 +212,11 @@ func getStatusEmoji(status string) string {
 func getStatusName(status string) string {
 	switch status {
 	case mysql.StatusOpen:
-		return "Open"
+		return StatusOpenText
 	case mysql.StatusInProgress:
-		return "In progress"
+		return StatusInProgressText
 	case mysql.StatusDone:
-		return "Done"
+		return StatusDoneText
 	default:
 		return ""
 	}
