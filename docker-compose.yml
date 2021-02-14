@@ -1,0 +1,21 @@
+version: '3.6'
+services:
+  db:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: pass
+      MYSQL_DATABASE: slack
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypassword
+    ports: 
+      - 3306:3306
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d 
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080

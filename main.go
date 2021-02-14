@@ -6,7 +6,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hboyadzhieva/slack-bot-to-do-list/mysql"
 	"github.com/hboyadzhieva/slack-bot-to-do-list/tododo"
-	"github.com/joho/godotenv"
+	//"github.com/joho/godotenv"
 	"github.com/nlopes/slack"
 	"log"
 	"net/http"
@@ -16,32 +16,35 @@ import (
 const (
 	port     = ":80"
 	dialect  = "mysql"
-	dsn      = "root:pass@tcp(127.0.0.1:3306)/slack"
+	dsn      = "myuser:mypassword@tcp(127.0.0.1:3306)/slack"
 	idleConn = 10
 	maxConn  = 10
 )
 
 var db *sql.DB
 var commandHandler tododo.CommandHandlerInterface
+var slackVerToken string
 
 func main() {
-	err := godotenv.Load(os.Getenv("GOPATH") + string(os.PathSeparator) + "keys.env")
-	if err != nil {
-		log.Fatal("Error loading environment", err)
-	}
 
-	db, err = sql.Open(dialect, dsn)
+	token, exists := os.LookupEnv("SLACK_VERIFICATION_TOKEN")
+	if !exists {
+		log.Fatalf("Slack verification token not set in environment")
+	}
+	slackVerToken = token
+
+	db, err := sql.Open(dialect, dsn)
 	if err != nil {
 		log.Fatalf("Can't open DB: %s", err)
 	}
+
+	db.SetMaxIdleConns(idleConn)
+	db.SetMaxOpenConns(maxConn)
 
 	err = db.Ping()
 	if err != nil {
 		log.Fatalf("Ping DB error: %s", err)
 	}
-
-	db.SetMaxIdleConns(idleConn)
-	db.SetMaxOpenConns(maxConn)
 
 	defer db.Close()
 
@@ -61,7 +64,8 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !s.ValidateToken(os.Getenv("SLACK_VERIFICATION_TOKEN")) {
+	if !s.ValidateToken(slackVerToken) {
+		fmt.Printf("Cant validate token %s", slackVerToken)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
