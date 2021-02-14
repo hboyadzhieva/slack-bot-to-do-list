@@ -41,9 +41,9 @@ The task data is kept in MySQL database.
     
 6. Set environment variable
     
-    - From [slack-api](https://api.slack.com/apps/) go to your app -> Basic Information -> App Credentials, copy Verification Token and set env var SLACK_VERIFICATION_TOKEN to the value
+    - From [slack-api](https://api.slack.com/apps/) go to your app -> Basic Information -> App Credentials, copy Verification Token and set environment variable SLACK_VERIFICATION_TOKEN to the value
     - for Windows 
-      `set SLACK_VERIFICATION_TOKEN=<your verification token`
+      `set SLACK_VERIFICATION_TOKEN=<your verification token>`
     - for Linux/Mac
       `EXPORT SLACK_VERIFICATION_TOKEN="<your verification token>"`
       
