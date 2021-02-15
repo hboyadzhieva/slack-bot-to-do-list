@@ -1,6 +1,8 @@
 package tododo
 
 import (
+	"encoding/json"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -18,6 +20,14 @@ func TestNewSectionTextBlock(t *testing.T) {
 	if !reflect.DeepEqual(expected, real) {
 		t.Errorf("Expected equal but not equal, expected: %v , real: %v", expected, real)
 	}
+}
+
+func ExampleNewSectionTextBlock() {
+	// Example
+	block := NewSectionTextBlock("mrkdwn", "hello")
+	bytes, _ := json.Marshal(block)
+	fmt.Println(string(bytes))
+	// Output: {"type":"section","text":{"type":"mrkdwn","text":"hello"}}
 }
 
 func TestNewSectionFieldsBlock(t *testing.T) {
