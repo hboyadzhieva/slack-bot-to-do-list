@@ -6,7 +6,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/hboyadzhieva/slack-bot-to-do-list/mysql"
 	"github.com/hboyadzhieva/slack-bot-to-do-list/tododo"
-	//"github.com/joho/godotenv"
 	"github.com/nlopes/slack"
 	"log"
 	"net/http"
@@ -72,6 +71,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 
 	response, err := commandHandler.HandleCommand(&s)
 	if err != nil {
+		fmt.Printf("Error handling command: %s, %s", s.Command, err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")

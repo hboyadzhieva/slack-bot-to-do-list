@@ -142,3 +142,31 @@ func TestHandleDoneCommandNoSuchTask(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, stringRes, NoSuchTaskIDText)
 }
+
+func TestValidateAssignCommandTextValid(t *testing.T) {
+	isValid := ValidateAssignCommandText("1 <@u1|hb>")
+	assert.True(t, isValid)
+}
+
+func TestValidateAssignCommandTextNotValid(t *testing.T) {
+	isValid1 := ValidateAssignCommandText("1")
+	isValid2 := ValidateAssignCommandText("a asas")
+	isValid3 := ValidateAssignCommandText("-3")
+	assert.False(t, isValid1)
+	assert.False(t, isValid2)
+	assert.False(t, isValid3)
+}
+
+func TestValidateStatusTextValid(t *testing.T) {
+	isValid := ValidateStatusText("1")
+	assert.True(t, isValid)
+}
+
+func TestValidateStatusTextNotValid(t *testing.T) {
+	isValid1 := ValidateStatusText("1 2")
+	isValid2 := ValidateStatusText("-2")
+	isValid3 := ValidateStatusText("words")
+	assert.False(t, isValid1)
+	assert.False(t, isValid2)
+	assert.False(t, isValid3)
+}

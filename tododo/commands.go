@@ -87,7 +87,6 @@ func (handler *CommandHandler) HandleShowCommand(text string, channelID string) 
 	if err != nil {
 		return nil, err
 	}
-	//TO DO error checking
 	header := NewHeaderBlock(ShowHeader)
 	div := NewDividerBlock()
 	blocks := make([]*Block, 0)
@@ -151,19 +150,6 @@ func (handler *CommandHandler) HandleAssignCommand(text string) ([]byte, error) 
 		return nil, err
 	}
 	return byt, nil
-}
-
-// ValidateAssignCommandText validates the args of /tododo-assign are exactly 2 - positive integer and a string represetation of assignee. Return true if the text is valid.
-func ValidateAssignCommandText(text string) bool {
-	args := strings.Split(text, " ")
-	if len(args) != 2 {
-		return false
-	}
-	num, err := strconv.Atoi(args[0])
-	if err != nil || num < 1 {
-		return false
-	}
-	return true
 }
 
 // HandleProgressCommand handles /tododo-start command and returns proper response or error.
@@ -244,6 +230,19 @@ func (handler *CommandHandler) HandleDoneCommand(text string) ([]byte, error) {
 		return nil, err
 	}
 	return byt, nil
+}
+
+// ValidateAssignCommandText validates the args of /tododo-assign are exactly 2 - positive integer and a string represetation of assignee. Return true if the text is valid.
+func ValidateAssignCommandText(text string) bool {
+	args := strings.Split(text, " ")
+	if len(args) != 2 {
+		return false
+	}
+	num, err := strconv.Atoi(args[0])
+	if err != nil || num < 1 {
+		return false
+	}
+	return true
 }
 
 // ValidateStatusText validates the arg of /tododo-start and /tododo-done is exactly 1 - positive integer. Return true if the text is valid.
