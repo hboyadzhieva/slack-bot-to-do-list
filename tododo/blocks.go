@@ -1,29 +1,30 @@
 package tododo
 
-// Block kit response. Can visualize the response with https://app.slack.com/block-kit-builder.
+// Response is an object used to visualize server's response in slack chat. Refer to https://app.slack.com/block-kit-builder for details.
 type Response struct {
 	Blocks []*Block `json:"blocks"`
 }
 
+// Block has a type(section, header, divider), can have text of type BlockText, can have fields of type BlockField
 type Block struct {
 	Type    string        `json:"type"`
 	BText   *BlockText    `json:"text,omitempty"`
 	BFields []*BlockField `json:"fields,omitempty"`
 }
 
-// Text element in block. Example types "plain_text", "mrkdwn".
+// BlockText is text element in block. Example types "plain_text", "mrkdwn".
 type BlockText struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
 }
 
-// Field element that can be a part of a block. Divides the block into arranged fields.
+// BlockField is a field element that can be a part of a block. Divides the block into arranged fields.
 type BlockField struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
 }
 
-// Construct block of type "section" with one text element.
+// NewSectionTextBlock constructs block of type "section" with one text element.
 // Pass text type - "plain_text" or "markdown" and text.
 func NewSectionTextBlock(textType string, text string) *Block {
 	block := Block{}
@@ -32,7 +33,7 @@ func NewSectionTextBlock(textType string, text string) *Block {
 	return &block
 }
 
-// Constructs block of type "section" with many field elements.
+// NewSectionFieldsBlock block of type "section" with fields.
 // Pass any number BlockField objects.
 func NewSectionFieldsBlock(fields ...*BlockField) *Block {
 	block := Block{}
@@ -45,7 +46,7 @@ func NewSectionFieldsBlock(fields ...*BlockField) *Block {
 	return &block
 }
 
-// Constructs block of type "header" with text.
+// NewHeaderBlock constructs a block of type "header".
 // Pass the text of the header.
 func NewHeaderBlock(text string) *Block {
 	block := Block{}
@@ -54,7 +55,7 @@ func NewHeaderBlock(text string) *Block {
 	return &block
 }
 
-// Constructs block of type "divider".
+// NewDividerBlock constructs a block of type "divider".
 // It is a simple divider line.
 func NewDividerBlock() *Block {
 	block := Block{}
@@ -62,7 +63,7 @@ func NewDividerBlock() *Block {
 	return &block
 }
 
-// Constructs a field to be put inside of block.
+// NewField constructs a field that will be put inside of block.
 // Pass field type and text.
 func NewField(fieldType string, text string) *BlockField {
 	field := BlockField{}
@@ -71,7 +72,7 @@ func NewField(fieldType string, text string) *BlockField {
 	return &field
 }
 
-// Constructs the final response to be returned to slack client.
+// NewResponse constructs the final response to be returned to slack client.
 // Pass any number of Block objects
 func NewResponse(blocks ...*Block) *Response {
 	resp := Response{}

@@ -1,7 +1,6 @@
 package tododo
 
 import (
-	"fmt"
 	"github.com/hboyadzhieva/slack-bot-to-do-list/mysql"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -13,25 +12,26 @@ func (repo *MockRepo) PersistTask(t *mysql.Task) error {
 	return nil
 }
 
-func (repo *MockRepo) GetTaskById(id int) (*mysql.Task, error) {
-	return &mysql.Task{Id: 1, Status: mysql.StatusOpen, Title: "MockTitle", AsigneeId: "U1", ChannelId: "CH1"}, nil
+func (repo *MockRepo) GetTaskByID(ID int) (*mysql.Task, error) {
+	return &mysql.Task{ID: 1, Status: mysql.StatusOpen, Title: "MockTitle", AsigneeID: "U1", ChannelID: "CH1"}, nil
 }
 
-func (repo *MockRepo) GetAllInChannel(channelId string) ([]*mysql.Task, error) {
-	tasks := []*mysql.Task{&mysql.Task{Id: 1, Status: mysql.StatusOpen, Title: "MockTitle", AsigneeId: "U1", ChannelId: "CH1"}}
+func (repo *MockRepo) GetAllInChannel(channelID string) ([]*mysql.Task, error) {
+	tasks := []*mysql.Task{&mysql.Task{ID: 1, Status: mysql.StatusOpen, Title: "MockTitle", AsigneeID: "U1", ChannelID: "CH1"}}
 	return tasks, nil
 }
 
-func (repo *MockRepo) GetAllInChannelAssignedTo(channelId string, assigneeId string) ([]*mysql.Task, error) {
-	tasks := []*mysql.Task{&mysql.Task{Id: 1, Status: mysql.StatusOpen, Title: "MockTitle", AsigneeId: "U1", ChannelId: "CH1"}}
-	return tasks, nil
-}
-
-func (repo *MockRepo) AssignTaskTo(taskId int, assigneeId string) error {
+func (repo *MockRepo) AssignTaskTo(taskID int, assigneeID string) error {
+	if taskID != 1 {
+		return mysql.ErrNoRowOrMoreThanOne
+	}
 	return nil
 }
 
-func (repo *MockRepo) SetStatus(taskId int, status string) error {
+func (repo *MockRepo) SetStatus(taskID int, status string) error {
+	if taskID != 1 {
+		return mysql.ErrNoRowOrMoreThanOne
+	}
 	return nil
 }
 
@@ -85,6 +85,14 @@ func TestHandleAssingCommandBadArgs(t *testing.T) {
 	assert.Contains(t, stringRes, AssignBadArgsText)
 }
 
+func TestHandleAssingCommandNoSuchTask(t *testing.T) {
+	mockHandler := &CommandHandler{&MockRepo{}}
+	result, err := mockHandler.HandleAssignCommand("2 U1")
+	stringRes := string(result)
+	assert.NoError(t, err)
+	assert.Contains(t, stringRes, NoSuchTaskIDText)
+}
+
 func TestHandleProgressCommand(t *testing.T) {
 	mockHandler := &CommandHandler{&MockRepo{}}
 	result, err := mockHandler.HandleProgressCommand("1")
@@ -99,7 +107,15 @@ func TestHandleProgressCommandBadArgs(t *testing.T) {
 	result, err := mockHandler.HandleProgressCommand("1 one go")
 	stringRes := string(result)
 	assert.NoError(t, err)
-	assert.Contains(t, stringRes, AssignBadArgsText)
+	assert.Contains(t, stringRes, ProgressBadArgsText)
+}
+
+func TestHandleProgressCommandNoSuchTask(t *testing.T) {
+	mockHandler := &CommandHandler{&MockRepo{}}
+	result, err := mockHandler.HandleProgressCommand("2")
+	stringRes := string(result)
+	assert.NoError(t, err)
+	assert.Contains(t, stringRes, NoSuchTaskIDText)
 }
 
 func TestHandleDoneCommand(t *testing.T) {
@@ -113,13 +129,16 @@ func TestHandleDoneCommand(t *testing.T) {
 
 func TestHandleDoneCommandBadArgs(t *testing.T) {
 	mockHandler := &CommandHandler{&MockRepo{}}
-	result, err := mockHandler.HandleDoneCommand("1 one go")
+	result, err := mockHandler.HandleDoneCommand("wawa")
 	stringRes := string(result)
 	assert.NoError(t, err)
-	assert.Contains(t, stringRes, AssignBadArgsText)
+	assert.Contains(t, stringRes, DoneBadArgsText)
 }
 
-func ExampleHandleCommand() {
-	fmt.Println(1 + 2)
-	//Output: 3
+func TestHandleDoneCommandNoSuchTask(t *testing.T) {
+	mockHandler := &CommandHandler{&MockRepo{}}
+	result, err := mockHandler.HandleDoneCommand("2")
+	stringRes := string(result)
+	assert.NoError(t, err)
+	assert.Contains(t, stringRes, NoSuchTaskIDText)
 }

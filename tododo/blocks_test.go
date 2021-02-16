@@ -58,6 +58,13 @@ func TestNewHeaderBlock(t *testing.T) {
 	}
 }
 
+func ExampleNewHeaderBlock() {
+	block := NewHeaderBlock("hello")
+	byt, _ := json.Marshal(block)
+	fmt.Println(string(byt))
+	// Output: {"type":"header","text":{"type":"plain_text","text":"hello"}}
+}
+
 func TestNewDividerBlock(t *testing.T) {
 	expected := &Block{
 		Type: "divider",
@@ -66,6 +73,13 @@ func TestNewDividerBlock(t *testing.T) {
 	if !reflect.DeepEqual(expected, real) {
 		t.Errorf("Expected equal but not equal, expected: %v , real: %v", expected, real)
 	}
+}
+
+func ExampleNewDividerBlock() {
+	block := NewDividerBlock()
+	byt, _ := json.Marshal(block)
+	fmt.Println(string(byt))
+	// Output: {"type":"divider"}
 }
 
 func TestNewField(t *testing.T) {
@@ -77,6 +91,13 @@ func TestNewField(t *testing.T) {
 	if !reflect.DeepEqual(expected, real) {
 		t.Errorf("Expected equal but not equal, expected: %v , real: %v", expected, real)
 	}
+}
+
+func ExampleNewField() {
+	field := NewField("mrkdwn", "hello")
+	byt, _ := json.Marshal(field)
+	fmt.Println(string(byt))
+	// Output: {"type":"mrkdwn","text":"hello"}
 }
 
 func TestNewResponse(t *testing.T) {
@@ -94,4 +115,14 @@ func TestNewResponse(t *testing.T) {
 	if !reflect.DeepEqual(expected, real) {
 		t.Errorf("Expected equal but not equal, expected: %v , real: %v", expected, real)
 	}
+}
+
+func ExampleNewResponse() {
+	block1 := NewHeaderBlock("hello")
+	div := NewDividerBlock()
+	block2 := NewSectionTextBlock("mrkdwn", "welcome")
+	resp := NewResponse(block1, div, block2)
+	byt, _ := json.Marshal(resp)
+	fmt.Println(string(byt))
+	// Output: {"blocks":[{"type":"header","text":{"type":"plain_text","text":"hello"}},{"type":"divider"},{"type":"section","text":{"type":"mrkdwn","text":"welcome"}}]}
 }
